@@ -13,6 +13,7 @@ import dataclasses
 import distutils.spawn
 import importlib
 import inspect
+import json
 import os
 import os.path
 import sys
@@ -752,7 +753,12 @@ def _list_impl(proc_name: str, command_args: List[str]) -> int:  # noqa: C901
         prog=f"{proc_name} list",
         fromfile_prefix_chars="@",
     )
-    _ = parser.parse_args(command_args)
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output JSON instead of text-based list.",
+    )
+    args = parser.parse_args(command_args)
 
     # Now, import each of the modules to determine their paths.
     codemods: Dict[Type[CodemodCommand], str] = {}
@@ -796,10 +802,17 @@ def _list_impl(proc_name: str, command_args: List[str]) -> int:  # noqa: C901
                 except TypeError:
                     continue
 
-    printable_codemods: List[str] = [
-        f"{name} - {obj.DESCRIPTION}" for obj, name in codemods.items()
-    ]
-    print("\n".join(sorted(printable_codemods)))
+    if args.json:
+        codemods_data = [
+            {"name": name, "description": obj.DESCRIPTION}
+            for obj, name in codemods.items()
+        ]
+        print(json.dumps(codemods_data, indent=4))
+    else:
+        printable_codemods: List[str] = [
+            f"{name} - {obj.DESCRIPTION}" for obj, name in codemods.items()
+        ]
+        print("\n".join(sorted(printable_codemods)))
     return 0
 
 
